@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-
+import nn_visualizer as visual
 
 class AANN:
 
@@ -30,18 +30,26 @@ class AANN:
     ]
 
     def __init__(self, shape, init_value, init_dist, hidden_activation,
-                        output_activation, learning_rate, loss_function, model_path=''):
+                        output_activation, learning_rate, loss_function, model_path='', visualize_free_variables=False, visualize_error=False):
 
-        self.session = None
-        self.shape = shape
-        self.model_path = model_path
+        self.session = None  # active tf session
+        self.shape = shape  # shape of network
+        self.model_path = model_path  # save/load path for model
 
-        self.y_target = tf.placeholder(tf.float64, [None, shape[-1]])
-        self.A = []
-        self.x = tf.placeholder(tf.float64, [None, shape[0]])
-        self.w = []
-        self.b = []
+        # Model variables and operations
+        self.y_target = tf.placeholder(tf.float64, [None, shape[-1]])  # target output
+        self.A = []  # activations
+        self.x = tf.placeholder(tf.float64, [None, shape[0]])  # net input
+        self.w = []  # all weights
+        self.b = []  # all biases
 
+        # Visualizers
+        self.visualize_vars = visualize_free_variables
+        self.visualize_error = visualize_error
+        self.wnb_visualizers = []  # visualizers for weights and biases
+        self.error_visualizer = visual.ErrorVisualizer('Error') if visualize_error else None
+
+        # initialize network
         self._generate_weights(shape, init_value, init_dist)
         self._set_hidden_activations(hidden_activation)
         self._set_out_layer_activation(output_activation)
@@ -49,10 +57,14 @@ class AANN:
         self.error = AANN.LOSS_FN[loss_function](self.y_target, self.A[-1])
         self.optimizer = tf.train.GradientDescentOptimizer(learning_rate, name='gradient_descent').minimize(self.error)
 
+        # Testing network accuracy currently only for classification. TODO add support for regression
         correct_prediction = tf.equal(tf.argmax(self.A[-1], 1), tf.argmax(self.y_target, 1))
         self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
+        # create tf saver. used for network loading and saving
         self.saver = tf.train.Saver()
+
+
 
     def get_session(self):
         if self.session is None:
@@ -78,7 +90,9 @@ class AANN:
 
     def batch_train(self, batch_x, batch_y):
         sess = self.get_session()
-        return sess.run(self.optimizer, feed_dict={self.x: batch_x, self.y_target: batch_y})
+        _, ws, bs, e = sess.run([self.optimizer, self.w, self.b, self.accuracy], feed_dict={self.x: batch_x, self.y_target: batch_y})
+        self._visualize(ws, bs, e)
+
 
     def feed_forward(self, input):
         sess = self.get_session()
@@ -101,6 +115,10 @@ class AANN:
                 b = np.random.random_integers(init_value[0], init_value[1], (shape[i], 1))
             self.w.append(tf.Variable(w, name='w' + str(i)))
             self.b.append(tf.Variable(b, name='b' + str(i)))
+            # Set var visualizers
+            if self.visualize_vars:
+                self.wnb_visualizers.append(visual.VarVisualizer('layer' + str(i),
+                                            np.concatenate((w.T, b.reshape(b.shape[0], 1)), axis=1)))
 
     def _set_hidden_activations(self, activation):
         z = tf.matmul(self.x, self.w[0]) + self.b[0]
@@ -116,4 +134,9 @@ class AANN:
         a = AANN.ACTIVATION_FN[activation](z)
         self.A.append(a)
 
-
+    def _visualize(self, ws, bs, e):
+        if self.visualize_vars:
+            [v.update_data(np.concatenate((w.T, b.reshape(b.shape[0], 1)), axis=1)) for v, w, b in
+             zip(self.wnb_visualizers, ws, bs)]
+        if self.visualize_error:
+            self.error_visualizer.update_data(e)

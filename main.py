@@ -3,9 +3,13 @@ import numpy as np
 from data_reader import DataSet
 
 
+
 def auto_encoder():
     arr = np.array([[1 if i==j else 0 for j in range(10)] for i in range(10)])
-    net = AANN([10, 3, 10], [0.1, 0.9], AANN.NORMAL, AANN.SIGMOID, AANN.SIGMOID, 0.4, AANN.SQUARED_MEAN)
+    net = AANN([10, 3, 10], [0.1, 0.9], AANN.NORMAL,
+               AANN.SIGMOID, AANN.SIGMOID,
+               0.4, AANN.SQUARED_MEAN,
+               visualize_free_variables=False, visualize_error=True)
 
     for _in in range(10000):
         net.batch_train(arr, arr)
@@ -17,7 +21,7 @@ def auto_encoder():
 
 def wine():
     data = DataSet('data_sets/winequality_red.txt', ';', [.8, .1, .1])
-    net = AANN([data.features, 400, 200, data.classes], [0.1, 0.9],
+    net = AANN([data.features, 400, 200, 100, data.classes], [0.1, 0.9],
                AANN.NORMAL, AANN.SIGMOID, AANN.SOFTMAX, 0.001, AANN.CROSS_ENTROPY, model_path='models/wine2/')
 
     mini_batches = data.get_mini_batches(25)
@@ -34,10 +38,10 @@ def wine():
 
 def yeast():
     data = DataSet('data_sets/yeast.txt', ',', [.8, .1, .1])
-    net = AANN([data.features, 256, 128, 64, data.classes], [0.1, 0.9],
-               AANN.NORMAL, AANN.TANH, AANN.SOFTMAX, 0.001, AANN.CROSS_ENTROPY, model_path='')
+    net = AANN([data.features, 400, 200, 100, data.classes], [0.1, 0.9],
+               AANN.NORMAL, AANN.TANH, AANN.SOFTMAX, 0.01, AANN.CROSS_ENTROPY, model_path='')#, visualize_error=True)
 
-    mini_batches = data.get_mini_batches(25)
+    mini_batches = data.get_mini_batches(150)
     j = 1
     while True:
         for i in range(100):
@@ -51,3 +55,4 @@ def yeast():
 
 
 yeast()
+input()

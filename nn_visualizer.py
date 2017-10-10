@@ -55,47 +55,55 @@ def val_map(x, in_min, in_max,  out_min, out_max):
 
 class ErrorVisualizer:
 
-    def __init__(self, name, size=(800, 600), framerate=24):
-
-
-        self.size = size
+    def __init__(self, name, running_average_size=50, ee=False):
 
         self.fig = plt.figure()
-        self.ln, = plt.plot([])
+        plt.ylabel('%error')
+        plt.ylim((0, 1))
         plt.ion()
         plt.show()
 
-        self.data = []
+
+        self.ras = running_average_size
+
+        self.ee = ee
+
+        self.training_error = []
+        self.evaluation_error = []
+        self.training_slider = np.zeros(self.ras)
+        self.evaluation_slider = np.zeros(self.ras)
+        self.counter = 0
         self.name = name
 
-        self.framerate = framerate/1000
-        self.last_update = 0
 
 
-    def update_data(self, data):
-        self.data.append(1-data)
-        if (time.time() - self.last_update) > self.framerate:
+    def update_error(self, training_error, evaluation_error=None):
+        self.training_slider[self.counter] = 1-training_error
+        if self.ee:
+            self.evaluation_slider[self.counter] = 1-evaluation_error
+        self.counter += 1
+        if self.counter == self.ras:
+            self.counter = 0
+            self.training_error.append(np.sum(self.training_slider)/self.ras)
+            if self.ee:
+                self.evaluation_error.append(np.sum(self.evaluation_slider)/self.ras)
             self._draw()
-            self.last_update = time.time()
+
 
     def _draw(self):
         plt.pause(.2)
-        plt.gca().cla()
-        plt.plot(range(len(self.data)), self.data)
-
+        plt.gca().xaxis.cla()
+        x = range(0, len(self.training_error)*self.ras, self.ras)
+        if not self.ee:
+            plt.plot(x, self.training_error)
+        else:
+            plt.plot(x, self.training_error, 'b-',
+                     x, self.evaluation_error, 'r--')
         plt.draw()
 
 
 
 
-    def _to_be_named(self):
-        if len(self.data) <= self.size[0]:
-            return self.data
-        te = int(np.ceil(len(self.data)/self.size[0]))
-        new = []
-        for i in range(self.size[0]):
-            new.append(sum(self.data[i*te:(i+1)*te])/(te+1))
-        return new
 
 
 if __name__ == '__main__':

@@ -30,7 +30,8 @@ class AANN:
     ]
 
     def __init__(self, shape, init_value, init_dist, hidden_activation,
-                        output_activation, learning_rate, loss_function, model_path='', visualize_free_variables=False, visualize_error=False):
+                output_activation, learning_rate, loss_function, model_path='',
+                evaluate=False, visualize_free_variables=False, visualize_error=False):
 
         self.session = None  # active tf session
         self.shape = shape  # shape of network
@@ -47,7 +48,7 @@ class AANN:
         self.visualize_vars = visualize_free_variables
         self.visualize_error = visualize_error
         self.wnb_visualizers = []  # visualizers for weights and biases
-        self.error_visualizer = visual.ErrorVisualizer('Error') if visualize_error else None
+        self.error_visualizer = visual.ErrorVisualizer('Error', ee=evaluate) if visualize_error else None
 
         # initialize network
         self._generate_weights(shape, init_value, init_dist)
@@ -88,10 +89,13 @@ class AANN:
         if len(self.model_path) != 0:
             self.saver.save(self.get_session(), self.model_path)
 
-    def batch_train(self, batch_x, batch_y):
+    def batch_train(self, batch_x, batch_y, train_x=None, train_y=None):
         sess = self.get_session()
-        _, ws, bs, e = sess.run([self.optimizer, self.w, self.b, self.accuracy], feed_dict={self.x: batch_x, self.y_target: batch_y})
-        self._visualize(ws, bs, e)
+        _, ws, bs, te = sess.run([self.optimizer, self.w, self.b, self.accuracy], feed_dict={self.x: batch_x, self.y_target: batch_y})
+        ee = None
+        if train_x is not None:
+            ee = sess.run(self.accuracy, feed_dict={self.x: train_x, self.y_target: train_y})
+        self._visualize(ws, bs, te, ee)
 
 
     def feed_forward(self, input):
@@ -134,9 +138,10 @@ class AANN:
         a = AANN.ACTIVATION_FN[activation](z)
         self.A.append(a)
 
-    def _visualize(self, ws, bs, e):
+    def _visualize(self, ws, bs, e, te=None):
         if self.visualize_vars:
             [v.update_data(np.concatenate((w.T, b.reshape(b.shape[0], 1)), axis=1)) for v, w, b in
              zip(self.wnb_visualizers, ws, bs)]
         if self.visualize_error:
-            self.error_visualizer.update_data(e)
+            self.error_visualizer.update_error(e, te)
+

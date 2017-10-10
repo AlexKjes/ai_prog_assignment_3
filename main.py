@@ -21,26 +21,27 @@ def auto_encoder():
 
 def wine():
     data = DataSet('data_sets/winequality_red.txt', ';', [.8, .1, .1])
-    net = AANN([data.features, 400, 200, 100, data.classes], [0.1, 0.9],
-               AANN.NORMAL, AANN.SIGMOID, AANN.SOFTMAX, 0.001, AANN.CROSS_ENTROPY, model_path='models/wine2/')
+    net = AANN([data.features, 512, 512, 512, data.classes], [0.1, 0.9],
+               AANN.NORMAL, AANN.SIGMOID, AANN.SOFTMAX, 0.02, AANN.CROSS_ENTROPY,
+               model_path='', visualize_error=True, evaluate=True)
 
-    mini_batches = data.get_mini_batches(25)
+    mini_batches = data.get_mini_batches(150)
     j = 1
     while True:
-        for i in range(1000):
+        for i in range(100):
             for mb in mini_batches:
-                net.batch_train(mb.x, mb.y)
+                net.batch_train(mb.x, mb.y, data.evaluation.x, data.evaluation.y)
 
         net.save_model()
         print("iteration " + str(j)+": " + str(net.evaluate_network(data.training.x, data.training.y)))
         j += 1
-    #print(net.feed_forward(data.training.x[:10]))
+
 
 def yeast():
     data = DataSet('data_sets/yeast.txt', ',', [.8, .1, .1])
-    m = 6
-    net = AANN([data.features, 2**m, 2**m, 2**m, 2**m,  data.classes], [0.1, 0.9],
-               AANN.NORMAL, AANN.TANH, AANN.SOFTMAX, 0.05, AANN.CROSS_ENTROPY,
+    m = 9
+    net = AANN([data.features, 2**m, 2**m, 2**m,  data.classes], [0.1, 0.9],
+               AANN.NORMAL, AANN.TANH, AANN.SOFTMAX, 0.006, AANN.CROSS_ENTROPY,
                model_path='', evaluate=True, visualize_error=True)
 
     mini_batches = data.get_mini_batches(150)
@@ -53,8 +54,24 @@ def yeast():
         net.save_model()
         print("iteration " + str(j)+": " + str(net.evaluate_network(data.training.x, data.training.y)))
         j += 1
-    #print(net.feed_forward(data.training.x[:10]))
 
 
-yeast()
+def glass():
+    data = DataSet('data_sets/glass.txt', ',', [.8, .1, .1])
+    net = AANN([data.features, 100, 100, data.classes], [0.1, 0.9],
+               AANN.NORMAL, AANN.SIGMOID, AANN.SOFTMAX, 0.005, AANN.CROSS_ENTROPY,
+               model_path='', visualize_error=True, evaluate=True)
+
+    mini_batches = data.get_mini_batches(10)
+    j = 1
+    while True:
+        for i in range(100):
+            for mb in mini_batches:
+                net.batch_train(mb.x, mb.y, data.evaluation.x, data.evaluation.y)
+
+        net.save_model()
+        print("iteration " + str(j)+": " + str(net.evaluate_network(data.training.x, data.training.y)))
+        j += 1
+
+glass()
 input()

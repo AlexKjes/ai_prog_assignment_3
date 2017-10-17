@@ -56,6 +56,7 @@ class AANN:
         self._set_out_layer_activation(output_activation)
 
         self.error = AANN.LOSS_FN[loss_function](self.y_target, self.A[-1])
+        self.learning_rate = learning_rate
         self.optimizer = tf.train.GradientDescentOptimizer(learning_rate, name='gradient_descent').minimize(self.error)
 
         # Testing network accuracy currently only for classification. TODO add support for regression
@@ -66,10 +67,13 @@ class AANN:
         self.saver = tf.train.Saver()
 
 
+    def set_learning_rate(self, learning_rate):
+        self.learning_rate = learning_rate
+        self.optimizer = tf.train.GradientDescentOptimizer(learning_rate, name='gradient_descent').minimize(self.error)
 
     def get_session(self):
         if self.session is None:
-            self.session = tf.InteractiveSession(config=tf.ConfigProto(log_device_placement=True))
+            self.session = tf.InteractiveSession()
             if len(self.model_path) != 0:
                 try:
                     self.saver.restore(self.session, self.model_path)

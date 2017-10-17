@@ -97,11 +97,12 @@ class ErrorVisualizer:
         plt.pause(.2)
         plt.gca().xaxis.cla()
         x = range(0, len(self.training_error)*self.ras, self.ras)
+        plt.clf()
         if not self.ee:
             plt.plot(x, self.training_error)
         else:
             plt.plot(x, self.training_error, 'b-',
-                     x, self.evaluation_error, 'r--')
+            x, self.evaluation_error, 'r--')
         plt.draw()
 
 

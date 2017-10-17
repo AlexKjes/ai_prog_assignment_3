@@ -1,7 +1,7 @@
 from tflow import AANN
 import numpy as np
 from data_reader import DataSet
-
+from tflowtools import pca
 
 
 def auto_encoder():
@@ -42,7 +42,7 @@ def yeast():
     m = 9
     net = AANN([data.features, 2**m, 2**m, 2**m,  data.classes], [0.1, 0.9],
                AANN.NORMAL, AANN.TANH, AANN.SOFTMAX, 0.006, AANN.CROSS_ENTROPY,
-               model_path='', evaluate=True, visualize_error=True)
+               model_path='', evaluate=True, visualize_error=False)
 
     mini_batches = data.get_mini_batches(150)
     j = 1
@@ -58,20 +58,38 @@ def yeast():
 
 def glass():
     data = DataSet('data_sets/glass.txt', ',', [.8, .1, .1])
-    net = AANN([data.features, 1024, 256, 128, data.classes], [0.1, 0.9],
-               AANN.NORMAL, AANN.SIGMOID, AANN.SOFTMAX, 0.0001, AANN.CROSS_ENTROPY,
-               model_path='', visualize_error=True, evaluate=True)
 
-    mini_batches = data.get_mini_batches(50)
+
+    f = 5
+    data.training.x = pca(data.training.x, f)
+    data.evaluation.x = pca(data.evaluation.x, f)
+
+    mini_batches = data.get_mini_batches(10)
+
+
+
+    net = AANN([f, 100, data.classes], [0.1, 0.9],
+               AANN.NORMAL, AANN.SIGMOID, AANN.SOFTMAX, 0.0001, AANN.CROSS_ENTROPY,
+               model_path='', visualize_error=False, evaluate=True)
+
+
+
+
     j = 1
     while True:
         for i in range(100):
             for mb in mini_batches:
                 net.batch_train(mb.x, mb.y, data.evaluation.x, data.evaluation.y)
 
-        net.save_model()
+        r = (np.random.randn(1) % 0.01)[0]
+        print(r)
+        net.set_learning_rate(r)
+        #net.save_model()
         print("iteration " + str(j)+": " + str(net.evaluate_network(data.training.x, data.training.y)))
         j += 1
 
+
+
 glass()
+
 input()

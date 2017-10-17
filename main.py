@@ -58,11 +58,11 @@ def yeast():
 
 def glass():
     data = DataSet('data_sets/glass.txt', ',', [.8, .1, .1])
-    net = AANN([data.features, 100, 100, data.classes], [0.1, 0.9],
-               AANN.NORMAL, AANN.SIGMOID, AANN.SOFTMAX, 0.005, AANN.CROSS_ENTROPY,
+    net = AANN([data.features, 1024, 256, 128, data.classes], [0.1, 0.9],
+               AANN.NORMAL, AANN.SIGMOID, AANN.SOFTMAX, 0.0001, AANN.CROSS_ENTROPY,
                model_path='', visualize_error=True, evaluate=True)
 
-    mini_batches = data.get_mini_batches(10)
+    mini_batches = data.get_mini_batches(50)
     j = 1
     while True:
         for i in range(100):

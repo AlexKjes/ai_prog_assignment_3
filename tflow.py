@@ -69,7 +69,7 @@ class AANN:
 
     def get_session(self):
         if self.session is None:
-            self.session = tf.InteractiveSession()
+            self.session = tf.InteractiveSession(config=tf.ConfigProto(log_device_placement=True))
             if len(self.model_path) != 0:
                 try:
                     self.saver.restore(self.session, self.model_path)

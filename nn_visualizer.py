@@ -4,49 +4,49 @@ import time
 import matplotlib.pyplot as plt
 
 
+
 class VarVisualizer:
 
-    def __init__(self, name, data, size=(800, 600), framerate=24):
-
-
-        self.size = size
-        self.size_per_unit = [size[0]/len(data[0]), size[1]/len(data)]
-        self.min_max = [np.min(data), np.max(data)]
+    def __init__(self, name, data, size=(800, 800)):
+        data = data.T
+        print(data.shape)
+        sr = [data.shape[0]/data.shape[1], data.shape[1]/data.shape[0]]
+        self.size = [size[1]*(sr[0] if sr[0] < 1 else 1),
+                     size[0]*(sr[1] if sr[1] < 1 else 1)]
+        print(self.size)
+        self.size_per_unit = [self.size[0]/len(data), self.size[1]/len(data[0])]
+        self.min_max = [abs(np.min(data)), np.max(data)]
 
         self.tk = tk.Tk(className=name)
-        self.canvas = tk.Canvas(master=self.tk, width=size[0], height=size[1])
+        self.canvas = tk.Canvas(master=self.tk, width=self.size[0], height=self.size[1])
         self.canvas.pack()
-
         self.data = data
         self.name = name
-
-        self.framerate = framerate/1000
-        self.last_update = 0
 
         self._draw()
 
     def update_data(self, data):
-        if (time.time() - self.last_update) > self.framerate:
             self.min_max = [np.min(data), np.max(data)]
             self.data = data
             self._draw()
-            self.last_update = time.time()
 
     def _draw(self):
         self.canvas.delete('all')
         for y, r in enumerate(self.data):
             for x, w in enumerate(r):
                 self._draw_unit(y, x, w)
+
         self.tk.update()
 
     def _draw_unit(self, y, x, w):
-        x_magn = val_map(w, self.min_max[0], self.min_max[1], 0, self.size_per_unit[0])
-        y_magn = val_map(w, self.min_max[0], self.min_max[1], 0, self.size_per_unit[1])
+        x_magn = val_map(w, 0, self.min_max[1] if w > 0 else self.min_max[0], 0, self.size_per_unit[0])
+        y_magn = val_map(w, 0, self.min_max[1] if w > 0 else self.min_max[0], 0, self.size_per_unit[1])
 
         x_pos = x*self.size_per_unit[0]+self.size_per_unit[0]/2-x_magn/2
         y_pos = y*self.size_per_unit[1]+self.size_per_unit[1]/2-y_magn/2
 
-        self.canvas.create_rectangle(x_pos, y_pos, x_pos+x_magn, y_pos+y_magn, fill='red', outline=None)
+        self.canvas.create_rectangle(x_pos, y_pos, x_pos+x_magn, y_pos+y_magn,
+                                     fill=('red' if w > 0 else 'blue'), outline=None)
 
 
 def val_map(x, in_min, in_max,  out_min, out_max):
@@ -55,60 +55,37 @@ def val_map(x, in_min, in_max,  out_min, out_max):
 
 class ErrorVisualizer:
 
-    def __init__(self, name, running_average_size=50, ee=False):
+    def __init__(self, name):
 
-        self.fig = plt.figure()
+        self.fig = plt.figure(name)
         plt.ylabel('%error')
         plt.ylim((0, 1))
-        plt.plot([], [], 'b-', label='Training Error')
-        plt.plot([], [], 'r--', label='Evaluation Error')
+        self.training_error = plt.plot([], [], 'b-', label='Training Error')[0]
+        self.evaluation_error = plt.plot([], [], 'r--', label='Evaluation Error')[0]
+        self.test_error = plt.plot([], [], 'g-', label='Test Error')[0]
         plt.legend()
         plt.ion()
         plt.show()
 
-
-        self.ras = running_average_size
-
-        self.ee = ee
-
-        self.training_error = []
-        self.evaluation_error = []
-        self.training_slider = np.zeros(self.ras)
-        self.evaluation_slider = np.zeros(self.ras)
         self.counter = 0
-        self.name = name
 
 
+    def update_training_error(self, y, x):
+        self.training_error.set_xdata(x)
+        self.training_error.set_ydata(y)
+        plt.xlim(0, x[-1])
+        plt.pause(0.005)
 
-    def update_error(self, training_error, evaluation_error=None):
-        self.training_slider[self.counter] = 1-training_error
-        if self.ee:
-            self.evaluation_slider[self.counter] = 1-evaluation_error
-        self.counter += 1
-        if self.counter == self.ras:
-            self.counter = 0
-            self.training_error.append(np.sum(self.training_slider)/self.ras)
-            if self.ee:
-                self.evaluation_error.append(np.sum(self.evaluation_slider)/self.ras)
-            self._draw()
+    def update_evaluation_error(self, y, x):
+        self.evaluation_error.set_xdata(x)
+        self.evaluation_error.set_ydata(y)
+        plt.pause(0.005)
 
-
-    def _draw(self):
-        plt.pause(.2)
-        plt.gca().xaxis.cla()
-        x = range(0, len(self.training_error)*self.ras, self.ras)
-        plt.clf()
-        if not self.ee:
-            plt.plot(x, self.training_error)
-        else:
-            plt.plot(x, self.training_error, 'b-',
-            x, self.evaluation_error, 'r--')
-        plt.draw()
-
-
-
-
-
+    def plot_test(self, y, x):
+        print(y)
+        self.test_error.set_xdata(x)
+        self.test_error.set_ydata(y)
+        plt.pause(0.005)
 
 if __name__ == '__main__':
 

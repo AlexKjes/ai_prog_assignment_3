@@ -314,6 +314,7 @@ def plot_training_history(error_hist,validation_hist=[],xtitle="Epoch",ytitle="E
         simple_plot([p[1] for p in validation_hist], [p[0] for p in validation_hist])
     PLT.ioff()
 
+
 # alpha = transparency
 def simple_scatter_plot(points,alpha=0.5,radius=3):
     colors = ['red','green','blue','magenta','brown','yellow','orange','brown','purple','black']
@@ -330,12 +331,15 @@ def simple_scatter_plot(points,alpha=0.5,radius=3):
 # If you do not want to draw box edges, just use 'None' as the 4th color.  A gray-scale combination that
 # mirrors Hinton's original version is ['gray','white','black',None]
 
-def hinton_plot(matrix, maxval=None, maxsize=1, fig=None,trans=True,scale=True, title='Hinton plot',
+
+def hinton_plot(matrix, maxval=None, maxsize=1, fig=None, trans=True, scale=True, title='Hinton plot',
                 colors=['gray','red','blue','white']):
     hfig = fig if fig else PLT.figure()
-    hfig.suptitle(title,fontsize=18)
-    if trans: matrix = matrix.transpose()
-    if maxval == None: maxval = np.abs(matrix).max()
+    hfig.suptitle(title, fontsize=18)
+    if trans:
+        matrix = matrix.transpose()
+    if maxval is None:
+        maxval = np.abs(matrix).max()
     if not maxsize: maxsize = 2**np.ceil(np.log(maxval)/np.log(2))
 
     axes = hfig.gca()

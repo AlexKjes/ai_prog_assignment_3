@@ -1,8 +1,13 @@
 import tensorflow as tf
 import numpy as np
 import nn_visualizer as visual
+import re
+import problem_generators as pg#13
+from data_reader import DataSet as Ds
+import time
+import tflowtools as tft
 
-class AANN:
+class ANN:
 
     NORMAL = 1
     EQUIPROBABLE = 2
@@ -10,8 +15,9 @@ class AANN:
     SIGMOID = 0
     TANH = 1
     RELU = 2
-    SOFTMAX = 3
-    ANALYTIC = 4
+    ELU = 3
+    SOFTMAX = 4
+    ANALYTIC = 5
 
     SQUARED_MEAN = 0
     CROSS_ENTROPY = 1
@@ -20,6 +26,7 @@ class AANN:
         tf.nn.sigmoid,
         tf.nn.tanh,
         tf.nn.relu6,
+        tf.nn.elu,
         tf.nn.softmax,
         lambda x: tf.log(1 + tf.exp(x))
         ]
@@ -30,8 +37,7 @@ class AANN:
     ]
 
     def __init__(self, shape, init_value, init_dist, hidden_activation,
-                output_activation, learning_rate, loss_function, model_path='',
-                evaluate=False, visualize_free_variables=False, visualize_error=False):
+                 output_activation, learning_rate, loss_function, model_path=''):
 
         self.session = None  # active tf session
         self.shape = shape  # shape of network
@@ -44,28 +50,21 @@ class AANN:
         self.w = []  # all weights
         self.b = []  # all biases
 
-        # Visualizers
-        self.visualize_vars = visualize_free_variables
-        self.visualize_error = visualize_error
-        self.wnb_visualizers = []  # visualizers for weights and biases
-        self.error_visualizer = visual.ErrorVisualizer('Error', ee=evaluate) if visualize_error else None
-
         # initialize network
         self._generate_weights(shape, init_value, init_dist)
         self._set_hidden_activations(hidden_activation)
         self._set_out_layer_activation(output_activation)
 
-        self.error = AANN.LOSS_FN[loss_function](self.y_target, self.A[-1])
+        self.error = ANN.LOSS_FN[loss_function](self.y_target, self.A[-1])
         self.learning_rate = learning_rate
         self.optimizer = tf.train.GradientDescentOptimizer(learning_rate, name='gradient_descent').minimize(self.error)
 
         # Testing network accuracy currently only for classification. TODO add support for regression
         correct_prediction = tf.equal(tf.argmax(self.A[-1], 1), tf.argmax(self.y_target, 1))
-        self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+        self.accuracy = 1-tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
         # create tf saver. used for network loading and saving
         self.saver = tf.train.Saver()
-
 
     def set_learning_rate(self, learning_rate):
         self.learning_rate = learning_rate
@@ -93,18 +92,15 @@ class AANN:
         if len(self.model_path) != 0:
             self.saver.save(self.get_session(), self.model_path)
 
-    def batch_train(self, batch_x, batch_y, train_x=None, train_y=None):
+    def batch_train(self, batch_x, batch_y, return_variables = []):
         sess = self.get_session()
-        _, ws, bs, te = sess.run([self.optimizer, self.w, self.b, self.accuracy], feed_dict={self.x: batch_x, self.y_target: batch_y})
-        ee = None
-        if train_x is not None:
-            ee = sess.run(self.accuracy, feed_dict={self.x: train_x, self.y_target: train_y})
-        self._visualize(ws, bs, te, ee)
+        ret = sess.run([self.optimizer] + return_variables,
+                                 feed_dict={self.x: batch_x, self.y_target: batch_y})
+        return ret[1:] if isinstance(ret, list) and len(ret)>1 else None
 
-
-    def feed_forward(self, input):
+    def feed_forward(self, x):
         sess = self.get_session()
-        return sess.run(self.A[-1], feed_dict={self.x: input})
+        return sess.run(self.A[-1], feed_dict={self.x: x})
 
     def evaluate_network(self, batch_x, batch_y):
         sess = self.get_session()
@@ -114,38 +110,186 @@ class AANN:
         for i in range(1, len(shape)):
             w = None
             b = None
-            if init_dist == AANN.NORMAL:
+            if init_dist == ANN.NORMAL:
                 w = np.random.randn(shape[i-1], shape[i])/(init_value[0] - init_value[1]) - init_value[0]
                 b = np.random.randn(shape[i])/(init_value[0] - init_value[1]) - init_value[0]
 
-            if init_dist == AANN.EQUIPROBABLE:
+            if init_dist == ANN.EQUIPROBABLE:
                 w = np.random.uniform(init_value[0], init_value[1], (shape[i-1], shape[i]))
                 b = np.random.random_integers(init_value[0], init_value[1], (shape[i], 1))
             self.w.append(tf.Variable(w, name='w' + str(i)))
             self.b.append(tf.Variable(b, name='b' + str(i)))
-            # Set var visualizers
-            if self.visualize_vars:
-                self.wnb_visualizers.append(visual.VarVisualizer('layer' + str(i),
-                                            np.concatenate((w.T, b.reshape(b.shape[0], 1)), axis=1)))
 
     def _set_hidden_activations(self, activation):
         z = tf.matmul(self.x, self.w[0]) + self.b[0]
-        a = AANN.ACTIVATION_FN[activation](z)
+        a = ANN.ACTIVATION_FN[activation](z)
         self.A.append(a)
         for i in range(1, len(self.w)-1):
             z = tf.matmul(a, self.w[i]) + self.b[i]
-            a = AANN.ACTIVATION_FN[activation](z)
+            a = ANN.ACTIVATION_FN[activation](z)
             self.A.append(a)
 
     def _set_out_layer_activation(self, activation):
         z = tf.matmul(self.A[-1], self.w[-1]) + self.b[-1]
-        a = AANN.ACTIVATION_FN[activation](z)
+        a = ANN.ACTIVATION_FN[activation](z)
         self.A.append(a)
 
-    def _visualize(self, ws, bs, e, te=None):
-        if self.visualize_vars:
-            [v.update_data(np.concatenate((w.T, b.reshape(b.shape[0], 1)), axis=1)) for v, w, b in
-             zip(self.wnb_visualizers, ws, bs)]
-        if self.visualize_error:
-            self.error_visualizer.update_error(e, te)
 
+class NeuralMan:
+
+    default = {
+        'data': 'data_sets/glass.txt',
+        'data_delimiter': ',',
+        'hidden_layers': [100],
+        'loss_fn': 1,
+        'output_fn': 3,
+        'hidden_fn': 0,
+        'learning_rate': 0.1,
+        'weight_init_range': [.1, .9],
+        'model_path': '',
+        'evaluate': True,
+        'visualize_error': True,
+        'steps': 0,
+        'shuffle_data': False,
+        'evaluation_step': 100
+    }
+
+    def __init__(self, conf_file_path):
+        self.properties = NeuralMan.default
+        self.read_conf_file(conf_file_path)
+        self.data_set = self.data_resolver()
+        self.net = self.make_nn()
+
+        self.training_error = []
+        self.evaluation_error = []
+        self.test_error = []
+
+        self.weight_visualizers = None
+        self.bias_visualizers = None
+        self.error_visualizer = visual.ErrorVisualizer('Loss') if self.properties['visualize_error'] else None
+
+        self.train()
+
+    def train(self):
+        mb = self.data_set.get_mini_batches(self.properties['mini_batch_size'])
+        i = 0
+        err = 1
+        start_time = time.time()
+        while i < self.properties['steps'] or self.properties['steps'] == 0 and err >= self.properties['error_limit']:
+            batch = i % len(mb)
+            self._train_return_handler(self.net.batch_train(mb[batch].x, mb[batch].y, self._net_get()))
+
+            err = self.training_error[-1]
+            i += 1
+            if i % self.properties['evaluation_step'] == 0 and self.properties['evaluate']:
+                self.evaluation_error.append(self.net.evaluate_network(self.data_set.training.x,
+                                                                       self.data_set.training.y))
+                print(str(round(time.time()-start_time)) + "s : " + str(self.evaluation_error[-1]))
+
+        self._after_training()
+
+    def read_conf_file(self, path):
+        with open(path, 'r') as f:
+            for line in f:
+                if line != '\n' or line[0] != '#':
+                    kv = re.split(':| ', line[:-1])
+                    key = kv[0].strip()
+                    value = []
+                    [value.append(v)if len(v)else None for v in kv[1:]]
+                    if key == 'data':
+                        if value[0].isnumeric():
+                            self.properties[key] = int(value[0])
+                        else:
+                            self.properties[key] = value[0]
+                    elif key == 'data_distribution' or \
+                            key == 'weight_init_range':
+                        self.properties[key] = [float(x) for x in value]
+                    elif key == 'hidden_layers' or \
+                        key == 'map_layers' or \
+                        key == 'map_dendrograms' or \
+                        key == 'display_weights' or \
+                            key == 'display_biases':
+                        self.properties[key] = [int(v) for v in value]
+                    elif key == 'loss_fn' or \
+                        key == 'output_fn' or \
+                        key == 'hidden_fn' or \
+                        key == 'map_batch_size' or \
+                        key == 'mini_batch_size' or \
+                        key == 'steps' or \
+                        key == 'shuffle_data' or \
+                        key == 'evaluation_step' or \
+                            key == 'save':
+                        self.properties[key] = int(value[0])
+                    elif key == 'learning_rate' or \
+                            key == 'error_limit':
+                        self.properties[key] = float(value[0])
+                    elif key == 'model_path' or \
+                            key == 'data_delimiter':
+                        self.properties[key] = value[0]
+                    elif key == 'shuffle_data' or \
+                            key == 'visualize_error':
+                        self.properties[key] = int(value[0]) > 0
+
+    def data_resolver(self):
+        dd = self.properties['data_distribution']
+        if isinstance(self.properties['data'], int):
+            return pg(int(self.properties['data']), dd)
+        else:
+            return Ds(self.properties['data'], self.properties['data_delimiter'], dd, self.properties['shuffle_data'])
+
+    def make_nn(self):
+        return ANN([self.data_set.features] + self.properties['hidden_layers'] + [self.data_set.classes],
+                   [float(x) for x in self.properties['weight_init_range']],
+                   ANN.NORMAL,
+                   int(self.properties['hidden_fn']),
+                   int(self.properties['output_fn']),
+                   float(self.properties['learning_rate']),
+                   int(self.properties['loss_fn']),
+                   self.properties['model_path'])
+
+    def _after_training(self):
+        test_err = self.net.evaluate_network(self.data_set.test.x, self.data_set.test.y)
+        print('Test error: {}'.format(test_err))
+
+        if not self.properties['visualize_error']:
+            self.error_visualizer = visual.ErrorVisualizer('Error')
+            x = np.arange(0, len(self.training_error), self.properties['evaluation_step'])
+            self.error_visualizer.update_evaluation_error(self.evaluation_error, x[:len(self.evaluation_error)])
+            self.error_visualizer.update_training_error(self.training_error[::self.properties['evaluation_step']], x)
+            self.error_visualizer.plot_test([test_err, test_err], [0, x[-1]])
+
+        input('Press enter to end')
+
+    def _train_return_handler(self, train_return):
+        i = 1
+        self.training_error.append(train_return[0])
+        if 'display_weights' in self.properties.keys():
+            dw = self.properties['display_weights']
+            weights = train_return[i:i + len(dw)]
+            i += len(dw)
+            if self.weight_visualizers is None:
+                self.weight_visualizers = [visual.VarVisualizer('W' + str(x), w) for x, w in zip(dw, weights)]
+            else:
+                [vv.update_data(w) for vv, w in zip(self.weight_visualizers, weights)]
+
+        if 'display_biases' in self.properties.keys():
+            db = self.properties['display_biases']
+            biases = [b.reshape(b.shape[0], 1) for b in train_return[i:i + len(db)]]
+            if self.bias_visualizers is None:
+                self.bias_visualizers = [visual.VarVisualizer('B' + str(x), b) for x, b in zip(db, biases)]
+            else:
+                [bv.update_data(b) for bv, b in zip(self.bias_visualizers, biases)]
+
+        if self.properties['visualize_error']:
+            step = 100
+            self.error_visualizer.update_training_error(self.training_error[::step],
+                                                        np.arange(0, len(self.training_error), step))
+
+    def _net_get(self):
+        ret = [self.net.accuracy]
+        if 'display_weights' in self.properties.keys():
+            [ret.append(self.net.w[x-1]) for x in self.properties['display_weights']]
+        if 'display_biases' in self.properties.keys():
+            [ret.append(self.net.b[x-1]) for x in self.properties['display_biases']]
+
+        return ret

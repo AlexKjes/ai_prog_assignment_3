@@ -1,0 +1,15 @@
+problem: autoencode
+hidden_layers: 100 200 300
+loss_fn: CROSS_ENTROPY | SQUARED_MEAN
+output_fn: SOFTMAX | SIGMOID | TANH
+hidden_fn: SOFTMAX | SIGMOID | TANH | RELU
+learning_rate: 0.1
+initial_weight_range: 0.1 0.8
+data_distribution: .8 .1 .1
+mini_batch_size: 50
+map_batch_size: 0
+steps: 0
+map_layers: 0
+map_dendrograms: 0
+display_weights: 0
+display_biases: 0

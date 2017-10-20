@@ -1,15 +1,17 @@
-from tflow import AANN
+from tflow import *
 import numpy as np
 from data_reader import DataSet
 from tflowtools import pca
 
 
+
+"""
 def auto_encoder():
     arr = np.array([[1 if i==j else 0 for j in range(10)] for i in range(10)])
-    net = AANN([10, 3, 10], [0.1, 0.9], AANN.NORMAL,
-               AANN.SIGMOID, AANN.SIGMOID,
-               0.4, AANN.SQUARED_MEAN,
-               visualize_free_variables=False, visualize_error=True)
+    net = ANN([10, 3, 10], [0.1, 0.9], ANN.NORMAL,
+              ANN.SIGMOID, ANN.SIGMOID,
+              0.4, ANN.SQUARED_MEAN,
+              visualize_free_variables=False, visualize_error=True)
 
     for _in in range(10000):
         net.batch_train(arr, arr)
@@ -21,9 +23,9 @@ def auto_encoder():
 
 def wine():
     data = DataSet('data_sets/winequality_red.txt', ';', [.8, .1, .1])
-    net = AANN([data.features, 512, 512, 512, data.classes], [0.1, 0.9],
-               AANN.NORMAL, AANN.SIGMOID, AANN.SOFTMAX, 0.02, AANN.CROSS_ENTROPY,
-               model_path='', visualize_error=True, evaluate=True)
+    net = ANN([data.features, 512, 512, 512, data.classes], [0.1, 0.9],
+              ANN.NORMAL, ANN.SIGMOID, ANN.SOFTMAX, 0.02, ANN.CROSS_ENTROPY,
+              model_path='', visualize_error=True, evaluate=True)
 
     mini_batches = data.get_mini_batches(150)
     j = 1
@@ -40,9 +42,9 @@ def wine():
 def yeast():
     data = DataSet('data_sets/yeast.txt', ',', [.8, .1, .1])
     m = 9
-    net = AANN([data.features, 2**m, 2**m, 2**m,  data.classes], [0.1, 0.9],
-               AANN.NORMAL, AANN.TANH, AANN.SOFTMAX, 0.006, AANN.CROSS_ENTROPY,
-               model_path='', evaluate=True, visualize_error=False)
+    net = ANN([data.features, 2 ** m, 2 ** m, 2 ** m, data.classes], [0.1, 0.9],
+              ANN.NORMAL, ANN.TANH, ANN.SOFTMAX, 0.006, ANN.CROSS_ENTROPY,
+              model_path='', evaluate=True, visualize_error=False)
 
     mini_batches = data.get_mini_batches(150)
     j = 1
@@ -57,10 +59,10 @@ def yeast():
 
 
 def glass():
-    data = DataSet('data_sets/glass.txt', ',', [.8, .1, .1])
+    data = DataSet('data_sets/glass.txt', ',', [.8, .1, .1], random=False)
 
 
-    f = 5
+    f = 4
     data.training.x = pca(data.training.x, f)
     data.evaluation.x = pca(data.evaluation.x, f)
 
@@ -68,9 +70,9 @@ def glass():
 
 
 
-    net = AANN([f, 100, data.classes], [0.1, 0.9],
-               AANN.NORMAL, AANN.SIGMOID, AANN.SOFTMAX, 0.0001, AANN.CROSS_ENTROPY,
-               model_path='', visualize_error=False, evaluate=True)
+    net = ANN([f, 200, data.classes], [0.1, 0.2],
+              ANN.NORMAL, ANN.SIGMOID, ANN.SOFTMAX, 0.001, ANN.CROSS_ENTROPY,
+              model_path='', visualize_error=False, evaluate=True)
 
 
 
@@ -81,9 +83,7 @@ def glass():
             for mb in mini_batches:
                 net.batch_train(mb.x, mb.y, data.evaluation.x, data.evaluation.y)
 
-        r = (np.random.randn(1) % 0.01)[0]
-        print(r)
-        net.set_learning_rate(r)
+
         #net.save_model()
         print("iteration " + str(j)+": " + str(net.evaluate_network(data.training.x, data.training.y)))
         j += 1
@@ -93,3 +93,6 @@ def glass():
 glass()
 
 input()
+"""
+
+NeuralMan('configs/wine.txt')

@@ -1,0 +1,23 @@
+data: data_sets/glass.txt
+data_delimiter:,
+hidden_layers: 20  20 512
+loss_fn: 1
+output_fn: 4
+hidden_fn: 0
+learning_rate: 0.02
+weight_init_range: 0.1 .9
+data_distribution: .8 .1 .1
+shuffle_data: 0
+mini_batch_size: 150
+map_batch_size: 0
+steps: 0
+error_limit: .95
+map_layers: 0
+map_dendrograms: 0
+display_weights: 0
+display_biases: 0
+save: 0
+#model_path:
+evaluate: 1
+shuffle_data: 1
+visualize_error: 0

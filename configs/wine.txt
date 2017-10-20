@@ -1,0 +1,24 @@
+data: data_sets/winequality_red.txt
+data_delimiter:;
+hidden_layers: 512  512 512
+loss_fn: 1
+output_fn: 4
+hidden_fn: 0
+learning_rate: 0.02
+weight_init_range: 0.1 .9
+data_distribution: .8 .1 .1
+shuffle_data: 0
+mini_batch_size: 150
+map_batch_size: 0
+steps: 0
+error_limit: .05
+map_layers: 0
+map_dendrograms: 0
+#display_weights: 1 2
+#display_biases: 1 2
+save: 0
+#model_path:
+evaluate: 1
+shuffle_data: 0
+visualize_error: 0
+evaluation_step: 10

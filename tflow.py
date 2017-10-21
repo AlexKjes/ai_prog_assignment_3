@@ -82,6 +82,9 @@ class ANN:
                 tf.global_variables_initializer().run()
         return self.session
 
+    def get_vars(self, var_list):
+        return self.get_session().run(var_list)
+
     def save_model(self, layer_range=None):
         if layer_range is None:
             layer_range = [0, len(self.w)]
@@ -101,6 +104,9 @@ class ANN:
     def feed_forward(self, x):
         sess = self.get_session()
         return sess.run(self.A[-1], feed_dict={self.x: x})
+
+    def custom_run(self, operations, feed_dict):
+        return self.get_session().run(operations, feed_dict=feed_dict)
 
     def evaluate_network(self, batch_x, batch_y):
         sess = self.get_session()
@@ -151,7 +157,10 @@ class NeuralMan:
         'visualize_error': True,
         'steps': 0,
         'shuffle_data': False,
-        'evaluation_step': 100
+        'evaluation_step': 100,
+        'error_limit': 1,
+        'map_batch_size': 0,
+        'normalize_data': True
     }
 
     def __init__(self, conf_file_path):
@@ -160,9 +169,10 @@ class NeuralMan:
         self.data_set = self.data_resolver()
         self.net = self.make_nn()
 
+        self.mb_error = []
         self.training_error = []
         self.evaluation_error = []
-        self.test_error = []
+        self.test_error = 0
 
         self.weight_visualizers = None
         self.bias_visualizers = None
@@ -171,22 +181,32 @@ class NeuralMan:
         self.train()
 
     def train(self):
-        mb = self.data_set.get_mini_batches(self.properties['mini_batch_size'])
-        i = 0
+        mini_batches = self.data_set.get_mini_batches(self.properties['mini_batch_size'])
+        epoch = 0
         err = 1
         start_time = time.time()
-        while i < self.properties['steps'] or self.properties['steps'] == 0 and err >= self.properties['error_limit']:
-            batch = i % len(mb)
-            self._train_return_handler(self.net.batch_train(mb[batch].x, mb[batch].y, self._net_get()))
+        while epoch < self.properties['steps'] or self.properties['steps'] == 0 and err >= self.properties['error_limit']:
+            for mb in mini_batches:
+                self._train_return_handler(self.net.batch_train(mb.x, mb.y, self._net_get()))
 
+            # End of epoch stuff
+            self.training_error.append(sum(self.mb_error)/len(self.mb_error))
+            self.mb_error = []
             err = self.training_error[-1]
-            i += 1
-            if i % self.properties['evaluation_step'] == 0 and self.properties['evaluate']:
-                self.evaluation_error.append(self.net.evaluate_network(self.data_set.training.x,
-                                                                       self.data_set.training.y))
-                print(str(round(time.time()-start_time)) + "s : " + str(self.evaluation_error[-1]))
+            epoch += 1
+            if self.properties['visualize_error']:
+                self.error_visualizer.update_training_error(self.training_error,
+                                                            np.arange(0, len(self.training_error), 1))
+            # Validation
+            if epoch % self.properties['evaluation_step'] == 0 and self.properties['evaluate']:
+                self.evaluation_error.append(self.net.evaluate_network(self.data_set.evaluation.x,
+                                                                       self.data_set.evaluation.y))
+                if self.properties['visualize_error']:
+                    self.error_visualizer.update_evaluation_error(self.evaluation_error,
+                                                                  np.arange(0, epoch, self.properties['evaluation_step']))
+                print(str(round(time.time()-start_time, 2)) + "s : " + str(self.training_error[-1]))
 
-        self._after_training()
+        self._after_training(epoch, time.time()-start_time)
 
     def read_conf_file(self, path):
         with open(path, 'r') as f:
@@ -207,8 +227,10 @@ class NeuralMan:
                     elif key == 'hidden_layers' or \
                         key == 'map_layers' or \
                         key == 'map_dendrograms' or \
-                        key == 'display_weights' or \
-                            key == 'display_biases':
+                        key == 'display_weights_in_training' or \
+                        key == 'display_biases_in_training' or \
+                        key == 'display_weights_after_training' or \
+                            key == 'display_biases_after_training':
                         self.properties[key] = [int(v) for v in value]
                     elif key == 'loss_fn' or \
                         key == 'output_fn' or \
@@ -227,7 +249,8 @@ class NeuralMan:
                             key == 'data_delimiter':
                         self.properties[key] = value[0]
                     elif key == 'shuffle_data' or \
-                            key == 'visualize_error':
+                        key == 'visualize_error' or \
+                            key == 'normalize_data':
                         self.properties[key] = int(value[0]) > 0
 
     def data_resolver(self):
@@ -235,7 +258,8 @@ class NeuralMan:
         if isinstance(self.properties['data'], int):
             return pg(int(self.properties['data']), dd)
         else:
-            return Ds(self.properties['data'], self.properties['data_delimiter'], dd, self.properties['shuffle_data'])
+            return Ds(self.properties['data'], self.properties['data_delimiter'], dd,
+                      self.properties['shuffle_data'], normalize=self.properties['normalize_data'])
 
     def make_nn(self):
         return ANN([self.data_set.features] + self.properties['hidden_layers'] + [self.data_set.classes],
@@ -247,24 +271,28 @@ class NeuralMan:
                    int(self.properties['loss_fn']),
                    self.properties['model_path'])
 
-    def _after_training(self):
-        test_err = self.net.evaluate_network(self.data_set.test.x, self.data_set.test.y)
-        print('Test error: {}'.format(test_err))
+    def _after_training(self, n_mini_batches, train_time):
+        self.test_err = self.net.evaluate_network(self.data_set.test.x, self.data_set.test.y)
+        train_err = self.net.evaluate_network(self.data_set.training.x, self.data_set.training.y)
+        print('\n\n\n\n\n')
 
-        if not self.properties['visualize_error']:
-            self.error_visualizer = visual.ErrorVisualizer('Error')
-            x = np.arange(0, len(self.training_error), self.properties['evaluation_step'])
-            self.error_visualizer.update_evaluation_error(self.evaluation_error, x[:len(self.evaluation_error)])
-            self.error_visualizer.update_training_error(self.training_error[::self.properties['evaluation_step']], x)
-            self.error_visualizer.plot_test([test_err, test_err], [0, x[-1]])
+        print('Training took {} seconds'.format(round(train_time, 2)))
+        print('Trained on {} epochs'.format(n_mini_batches))
+        print('Correct classifications on test set: {}%'.format(round(self.test_err*100, 2)))
+        print('Correct classifications on training set: {}%'.format(round(train_err*100, 2)))
+        print('Correct classifications on evaluation set: {}%'.format(round(self.evaluation_error[-1]*100, 2)))
+
+        self._visualize_after_run()
+
+
 
         input('Press enter to end')
 
     def _train_return_handler(self, train_return):
         i = 1
-        self.training_error.append(train_return[0])
-        if 'display_weights' in self.properties.keys():
-            dw = self.properties['display_weights']
+        self.mb_error.append(train_return[0])
+        if 'display_weights_in_training' in self.properties.keys():
+            dw = self.properties['display_weights_in_training']
             weights = train_return[i:i + len(dw)]
             i += len(dw)
             if self.weight_visualizers is None:
@@ -272,24 +300,66 @@ class NeuralMan:
             else:
                 [vv.update_data(w) for vv, w in zip(self.weight_visualizers, weights)]
 
-        if 'display_biases' in self.properties.keys():
-            db = self.properties['display_biases']
-            biases = [b.reshape(b.shape[0], 1) for b in train_return[i:i + len(db)]]
+        if 'display_biases_in_training' in self.properties.keys():
+            db = self.properties['display_biases_in_training']
+            biases = [b.reshape(b.shape[0], 1).T for b in train_return[i:i + len(db)]]
             if self.bias_visualizers is None:
                 self.bias_visualizers = [visual.VarVisualizer('B' + str(x), b) for x, b in zip(db, biases)]
             else:
                 [bv.update_data(b) for bv, b in zip(self.bias_visualizers, biases)]
 
-        if self.properties['visualize_error']:
-            step = 100
-            self.error_visualizer.update_training_error(self.training_error[::step],
-                                                        np.arange(0, len(self.training_error), step))
+
 
     def _net_get(self):
         ret = [self.net.accuracy]
         if 'display_weights' in self.properties.keys():
-            [ret.append(self.net.w[x-1]) for x in self.properties['display_weights']]
+            [ret.append(self.net.w[x-1]) for x in self.properties['display_weights_in_training']]
         if 'display_biases' in self.properties.keys():
-            [ret.append(self.net.b[x-1]) for x in self.properties['display_biases']]
+            [ret.append(self.net.b[x-1]) for x in self.properties['display_biases_in_training']]
 
         return ret
+
+    def _visualize_after_run(self):
+        self._visualize_after_vars()
+        self._visualize_after_error()
+        self._visualize_after_activations()
+        self._visualize_dendrogram()
+
+    def _visualize_after_activations(self):
+        if self.properties['map_batch_size'] > 0:
+            if 'map_layers' in self.properties.keys():
+                act = self.net.custom_run([self.net.A[a-1] for a in self.properties['map_layers']],
+                                          {self.net.x: self.data_set.training.x[0:self.properties['map_batch_size']]})
+                for am, al in zip(act, self.properties['map_layers']):
+                    visual.VarVisualizer('A'+str(al), am)
+
+
+    def _visualize_after_error(self):
+        if not self.properties['visualize_error']:
+            self.error_visualizer = visual.ErrorVisualizer('Error')
+            x = np.arange(0, len(self.training_error), self.properties['evaluation_step'])
+            self.error_visualizer.update_evaluation_error(self.evaluation_error, x[:len(self.evaluation_error)])
+            self.error_visualizer.update_training_error(self.training_error[::self.properties['evaluation_step']], x)
+        self.error_visualizer.plot_test([self.test_err, self.test_err], [0, len(self.training_error)])
+
+    def _visualize_after_vars(self):
+        if 'display_weights_after_training' in self.properties.keys():
+            w_layers = self.properties['display_weights_after_training']
+            weights = self.net.get_vars([self.net.w[w-1] for w in w_layers])
+            for wm, wl in zip(weights, w_layers):
+                visual.VarVisualizer('W' + str(wl), wm)
+
+        if 'display_biases_after_training' in self.properties.keys():
+            b_layers = self.properties['display_biases_after_training']
+            biases = self.net.get_vars([self.net.b[b-1] for b in b_layers])
+            for bm, bl in zip(biases, b_layers):
+                visual.VarVisualizer('B' + str(bl), bm.reshape(bm.shape[0], 1).T)
+
+    def _visualize_dendrogram(self):
+        if 'map_dendrograms' in self.properties.keys() and self.properties['map_batch_size'] > 0:
+            act = self.net.custom_run([self.net.A[a - 1] for a in self.properties['map_dendrograms']],
+                                      {self.net.x: self.data_set.training.x[0:self.properties['map_batch_size']]})
+            for am, al in zip(act, self.data_set.training.x[0:self.properties['map_batch_size']]):
+                print('YOLO!!!!!!')
+                print(al)
+                tft.dendrogram(am, tft.bits_to_str(al))

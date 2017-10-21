@@ -95,4 +95,5 @@ glass()
 input()
 """
 
-NeuralMan('configs/wine.txt')
+
+NeuralMan('configs/glass.txt')

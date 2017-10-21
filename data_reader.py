@@ -3,7 +3,7 @@ import numpy as np
 
 class DataSet:
 
-    def __init__(self, file_name, delimiter, set_dist, random=True):
+    def __init__(self, file_name, delimiter, set_dist, random=True, normalize=False):
         self.features = 0
         self.classes = 0
 
@@ -13,6 +13,8 @@ class DataSet:
         self.test = SubSet([], [])
 
         self.__read_file(file_name, delimiter)
+        if normalize:
+            self.normalize_data()
         if random:
             self.__distribute_sets_stochastic(set_dist + [1-sum(set_dist)])
         else:
@@ -45,7 +47,7 @@ class DataSet:
         self.features = len(self.all.x[0])
 
     def __distribute_sets_stochastic(self, set_dist):
-        sets = [self.training, self.evaluation, self.test, []]
+        sets = [self.training, self.evaluation, self.test, SubSet([], [])]
         for x, y in self.all:
             s = np.random.choice(np.arange(0, 4, dtype=np.int8), p=set_dist)
             sets[s].x.append(x)
@@ -63,6 +65,25 @@ class DataSet:
                     break
             sets[s].x.append(x)
             sets[s].y.append(self.int_to_one_hot(y, self.classes))
+
+    def normalize_data(self):
+        """
+        f_max = np.max(self.all.x, 1)
+        f_min = np.min(self.all.x, 1)
+        for i, r in enumerate(self.all.x):
+            tmp = np.zeros(self.features)
+            for j, f in enumerate(r):
+                tmp[j] = f-f_min[j]/(f_max[j]-f_min[j])
+            self.all.x[i] = tmp
+        """
+        f_std = np.std(self.all.x, 1)
+        f_mean = np.mean(self.all.x, 1)
+        for i, r in enumerate(self.all.x):
+            tmp = np.zeros(self.features)
+            for j, f in enumerate(r):
+                tmp[j] = f - f_mean[j] / f_std[i]
+            self.all.x[i] = tmp
+
 
     @staticmethod
     def int_to_one_hot(value, size):

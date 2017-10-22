@@ -1,7 +1,7 @@
 from tflow import *
 import numpy as np
 from data_reader import DataSet
-from tflowtools import pca
+import tflowtools as tft
 
 
 
@@ -96,4 +96,14 @@ input()
 """
 
 
-NeuralMan('configs/glass.txt')
+NeuralMan('configs/bit_counter.txt')
+"""
+sets = tft.gen_segmented_vector_cases(25,1000,0,8, poptargs=False)
+with open('data_sets/segment_counter.txt', 'w') as f:
+    for s in sets:
+        l = ''
+        for b in s[0]:
+            l += str(b) + ','
+        l += str(s[1]) + '\n'
+        f.write(l)
+"""

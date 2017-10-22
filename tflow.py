@@ -2,7 +2,6 @@ import tensorflow as tf
 import numpy as np
 import nn_visualizer as visual
 import re
-import problem_generators as pg#13
 from data_reader import DataSet as Ds
 import time
 import tflowtools as tft
@@ -169,6 +168,8 @@ class NeuralMan:
         self.data_set = self.data_resolver()
         self.net = self.make_nn()
 
+        print(self.data_set.classes)
+
         self.mb_error = []
         self.training_error = []
         self.evaluation_error = []
@@ -256,7 +257,8 @@ class NeuralMan:
     def data_resolver(self):
         dd = self.properties['data_distribution']
         if isinstance(self.properties['data'], int):
-            return pg(int(self.properties['data']), dd)
+            pass
+            #return pg(int(self.properties['data']), dd)
         else:
             return Ds(self.properties['data'], self.properties['data_delimiter'], dd,
                       self.properties['shuffle_data'], normalize=self.properties['normalize_data'])

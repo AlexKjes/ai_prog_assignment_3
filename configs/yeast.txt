@@ -5,20 +5,21 @@ loss_fn: 1
 output_fn: 4
 hidden_fn: 1
 learning_rate: 0.005
-weight_init_range: 0 1
+weight_init_range: 0.1 0.9
 data_distribution: .8 .1 .1
 shuffle_data: 0
-mini_batch_size: 100
+mini_batch_size: 150
 map_batch_size: 0
 steps: 0
 error_limit: .05
 map_layers: 0
 map_dendrograms: 0
-display_weights: 0
-display_biases: 0
+#display_weights: 0
+#display_biases: 0
 save: 0
 #model_path:
 evaluate: 1
-shuffle_data: 0
+shuffle_data: 1
+
 visualize_error: 1
 evaluation_step: 1

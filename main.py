@@ -1,7 +1,7 @@
 from tflow import *
 import numpy as np
 from data_reader import DataSet
-from tflowtools import pca
+import tflowtools as tft
 
 
 
@@ -95,4 +95,18 @@ glass()
 input()
 """
 
-NeuralMan('configs/wine.txt')
+
+NeuralMan('configs/bit_counter.txt')
+
+
+"""
+sets = tft.gen_all_parity_cases(10, False)
+with open('data_sets/parity.txt', 'w') as f:
+    for s in sets:
+        l = ''
+        for b in s[0]:
+            l += str(b) + ','
+        l += str(s[1]) + '\n'
+        f.write(l)
+
+"""

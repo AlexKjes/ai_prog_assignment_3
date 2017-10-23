@@ -9,12 +9,12 @@ class VarVisualizer:
 
     def __init__(self, name, data, size=(800, 800)):
         data = data.T
-        print(data.shape)
-        sr = [data.shape[0]/data.shape[1], data.shape[1]/data.shape[0]]
+
+        sr = [data.shape[1]/data.shape[0], data.shape[0]/data.shape[1]]
         self.size = [size[1]*(sr[0] if sr[0] < 1 else 1),
                      size[0]*(sr[1] if sr[1] < 1 else 1)]
-        print(self.size)
-        self.size_per_unit = [self.size[0]/len(data), self.size[1]/len(data[0])]
+
+        self.size_per_unit = [self.size[0]/len(data[0]), self.size[1]/len(data)]
         self.min_max = [abs(np.min(data)), np.max(data)]
 
         self.tk = tk.Tk(className=name)
@@ -26,9 +26,10 @@ class VarVisualizer:
         self._draw()
 
     def update_data(self, data):
-            self.min_max = [np.min(data), np.max(data)]
-            self.data = data
-            self._draw()
+        data = data.T
+        self.min_max = [np.min(data), np.max(data)]
+        self.data = data
+        self._draw()
 
     def _draw(self):
         self.canvas.delete('all')
@@ -82,7 +83,6 @@ class ErrorVisualizer:
         plt.pause(0.005)
 
     def plot_test(self, y, x):
-        print(y)
         self.test_error.set_xdata(x)
         self.test_error.set_ydata(y)
         plt.pause(0.005)

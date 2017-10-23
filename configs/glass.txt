@@ -4,7 +4,7 @@ hidden_layers: 2048 1024 512
 loss_fn: 1
 output_fn: 4
 hidden_fn: 1
-learning_rate: 0.00008
+learning_rate: 0.00007
 weight_init_range: .1 1
 data_distribution: .8 .1 .1
 shuffle_data: 0

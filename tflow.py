@@ -163,6 +163,7 @@ class NeuralMan:
         'error_limit': 1,
         'map_batch_size': 0,
         'normalize_data': False
+
     }
 
     def __init__(self, conf_file_path):
@@ -170,8 +171,6 @@ class NeuralMan:
         self.read_conf_file(conf_file_path)
         self.data_set = self.data_resolver()
         self.net = self.make_nn()
-
-
 
         self.mb_error = []
         self.training_error = []
@@ -190,10 +189,10 @@ class NeuralMan:
         err = 1
         start_time = time.time()
         while epoch < self.properties['steps'] or self.properties['steps'] == 0 and err >= self.properties['error_limit']:
-            for i, mb in enumerate(mini_batches):
+            for mb in mini_batches:
                 self._train_return_handler(self.net.batch_train(mb.x, mb.y, self._net_get()))
-            # End of epoch stuff
 
+            # End of epoch stuff
             self.training_error.append(sum(self.mb_error)/len(self.mb_error))
             self.mb_error = []
             err = self.training_error[-1]
@@ -312,6 +311,7 @@ class NeuralMan:
                 self.bias_visualizers = [visual.VarVisualizer('B' + str(x), b) for x, b in zip(db, biases)]
             else:
                 [bv.update_data(b) for bv, b in zip(self.bias_visualizers, biases)]
+
 
 
 

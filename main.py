@@ -96,7 +96,7 @@ input()
 """
 
 
-NeuralMan('configs/ecoli.txt')
+NeuralMan('configs/auto_encode.txt')
 
 
 
@@ -131,12 +131,21 @@ with open('data_sets/ecoli.txt', 'w') as f:
 """
 
 """
-sets = tft.gen_all_parity_cases(10, False)
-with open('data_sets/parity.txt', 'w') as f:
+#sets = tft.gen_all_parity_cases(10, False)
+sets = []
+for i in range(10):
+    d = [0] * 10
+    d[i] = 1
+    l = ''
+    for p in d:
+        l += str(p) + ','
+    l += str(i)
+    sets.append(l)
+    print(l)
+
+
+with open('data_sets/auto_encode.txt', 'w') as f:
     for s in sets:
-        l = ''
-        for b in s[0]:
-            l += str(b) + ','
-        l += str(s[1][0]) + '\n'
-        f.write(l)
+        f.write(s)
+        f.write('\n')
 """

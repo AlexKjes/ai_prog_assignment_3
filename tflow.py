@@ -261,6 +261,7 @@ class NeuralMan:
                         self.properties[key] = value[0]
                     elif key == 'shuffle_data' or \
                         key == 'visualize_error' or \
+                        key == 'evaluate' or \
                             key == 'normalize_data':
                         self.properties[key] = int(value[0]) > 0
 
@@ -284,15 +285,18 @@ class NeuralMan:
                    self.properties['model_path'])
 
     def _after_training(self, n_mini_batches, train_time):
-        self.test_err = self.net.evaluate_network(self.data_set.test.x, self.data_set.test.y)
+
         train_err = self.net.evaluate_network(self.data_set.training.x, self.data_set.training.y)
         print('\n\n\n\n\n')
 
         print('Training took {} seconds'.format(round(train_time, 2)))
         print('Trained on {} epochs'.format(n_mini_batches))
-        print('Correct classifications on test set: {}%'.format(round(self.test_err*100, 2)))
         print('Correct classifications on training set: {}%'.format(round(train_err*100, 2)))
-        print('Correct classifications on evaluation set: {}%'.format(round(self.evaluation_error[-1]*100, 2)))
+
+        if len(self.data_set.evaluation) != 0 and len(self.data_set.test) != 0:
+            self.test_err = self.net.evaluate_network(self.data_set.test.x, self.data_set.test.y)
+            print('Correct classifications on test set: {}%'.format(round(self.test_err*100, 2)))
+            print('Correct classifications on evaluation set: {}%'.format(round(self.evaluation_error[-1]*100, 2)))
 
         self._visualize_after_run()
 
@@ -349,12 +353,15 @@ class NeuralMan:
 
 
     def _visualize_after_error(self):
+
         if not self.properties['visualize_error']:
             self.error_visualizer = visual.ErrorVisualizer('Error')
             x = np.arange(0, len(self.training_error), self.properties['evaluation_step'])
-            self.error_visualizer.update_evaluation_error(self.evaluation_error, x[:len(self.evaluation_error)])
+            if len(self.evaluation_error) > 0:
+                self.error_visualizer.update_evaluation_error(self.evaluation_error, x[:len(self.evaluation_error)])
             self.error_visualizer.update_training_error(self.training_error[::self.properties['evaluation_step']], x)
-        self.error_visualizer.plot_test([self.test_err, self.test_err], [0, len(self.training_error)])
+        if len(self.data_set.test) > 0:
+            self.error_visualizer.plot_test([self.test_err, self.test_err], [0, len(self.training_error)])
 
     def _visualize_after_vars(self):
         if 'display_weights_after_training' in self.properties.keys():
@@ -373,6 +380,7 @@ class NeuralMan:
         if 'map_dendrograms' in self.properties.keys() and self.properties['map_batch_size'] > 0:
             act = self.net.custom_run([self.net.A[a - 1] for a in self.properties['map_dendrograms']],
                                       {self.net.x: self.data_set.training.x[0:self.properties['map_batch_size']]})
+            [visual.VarVisualizer('A'+str(i+1), x.T) for i, x in enumerate(act)]
             for am, al in zip(act, self.data_set.training.x[0:self.properties['map_batch_size']]):
                 print('YOLO!!!!!!')
                 print(al)

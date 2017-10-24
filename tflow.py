@@ -170,6 +170,12 @@ class NeuralMan:
         self.properties = NeuralMan.default
         self.read_conf_file(conf_file_path)
         self.data_set = self.data_resolver()
+
+        print("Data set:\n\tnFeatures: {0}\n\tnClasses: {1}".format(self.data_set.features, self.data_set.classes))
+        print("\tSizes:\n\t\tTraining: {0}\n\t\tValidation: {1}\n\t\tTesting: {2}".format(len(self.data_set.training),
+                                                                                          len(self.data_set.evaluation),
+                                                                                          len(self.data_set.test)))
+
         self.net = self.make_nn()
 
         self.mb_error = []
@@ -196,6 +202,8 @@ class NeuralMan:
             self.training_error.append(sum(self.mb_error)/len(self.mb_error))
             self.mb_error = []
             err = self.training_error[-1]
+            if err >= self.properties['error_limit']:
+                err = self.net.evaluate_network(self.data_set.training.x, self.data_set.training.y)
             epoch += 1
             if self.properties['visualize_error']:
                 self.error_visualizer.update_training_error(self.training_error,
@@ -207,8 +215,8 @@ class NeuralMan:
                 if self.properties['visualize_error']:
                     self.error_visualizer.update_evaluation_error(self.evaluation_error,
                                                                   np.arange(0, epoch, self.properties['evaluation_step']))
-                print(str(round(time.time()-start_time, 2)) + "s : " + str(self.training_error[-1]))
-
+                print('\r' + str(round(time.time()-start_time, 2)) + "s : " + str(self.training_error[-1]), end='')
+        print('\r')
         self._after_training(epoch, time.time()-start_time)
 
     def read_conf_file(self, path):

@@ -1,24 +1,24 @@
 
-data: data_sets/bit_counter.txt
+data: data_sets/ecoli.txt
 data_delimiter:,
-hidden_layers: 50
+hidden_layers: 50 50
 loss_fn: 1
 output_fn: 4
 hidden_fn: 1
-learning_rate: 0.1
-weight_init_range: 0.1 0.25
+learning_rate: 0.01
+weight_init_range: .1 .9
 data_distribution: .8 .1 .1
 
 mini_batch_size: 10
 
-#map_batch_size: 5
+#map_batch_size: 10
 #steps: 500
-error_limit: .025
+error_limit: .05
 #map_layers:  2 3
 #map_dendrograms: 1
 
-#display_weights_in_training: 1 2
-#display_biases_in_training: 1 2
+display_weights_in_training: 1 2
+display_biases_in_training: 1 2
 
 #display_weights_after_training: 2
 #display_biases_after_training: 2

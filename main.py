@@ -96,23 +96,47 @@ input()
 """
 
 
-NeuralMan('configs/mnist.txt')
+NeuralMan('configs/ecoli.txt')
 
 
 
 """
+c = []
+data = []
+with open('data_sets/ecoli.txt', 'r') as f:
+    for line in f:
+        l = line[:-1]
+        l = l.split(' ')
+        for x in reversed(l):
+            if len(x) == 0 or x == ' ':
+                l.remove(x)
+
+        data.append(l[1:])
+
+        if l[-1] not in c:
+            c.append(l[-1])
+
+for i, d in enumerate(data):
+    d[-1] = str(c.index(d[-1]))
+    l = ''
+    for x in d:
+        l += x+','
+    data[i] = l[:-1]+'\n'
+
+
+with open('data_sets/ecoli.txt', 'w') as f:
+    for d in data:
+        f.write(d)
+
+"""
+
+"""
 sets = tft.gen_all_parity_cases(10, False)
 with open('data_sets/parity.txt', 'w') as f:
-
-
-sets = tft.gen_segmented_vector_cases(25,1000,0,8, poptargs=False)
-with open('data_sets/segment_counter.txt', 'w') as f:
-
     for s in sets:
         l = ''
         for b in s[0]:
             l += str(b) + ','
-        l += str(s[1]) + '\n'
+        l += str(s[1][0]) + '\n'
         f.write(l)
-
 """

@@ -96,7 +96,7 @@ input()
 """
 
 
-NeuralMan('configs/auto_encode.txt')
+NeuralMan('configs/bit_counter.txt')
 
 
 

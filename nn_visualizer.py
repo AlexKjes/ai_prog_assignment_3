@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 
 class VarVisualizer:
 
-    def __init__(self, name, data, size=(800, 800)):
+    def __init__(self, name, data, size=(600, 600)):
+        input("yolo")
         data = data.T
 
         sr = [data.shape[1]/data.shape[0], data.shape[0]/data.shape[1]]

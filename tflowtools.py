@@ -425,10 +425,11 @@ def dendrogram(features,labels,metric='euclidean',mode='average',ax=None,title='
     ax = ax if ax else fig.gca()
     cluster_history = SCH.linkage(features,method=mode,metric=metric)
     r = SCH.dendrogram(cluster_history,labels=labels,orientation=orient,leaf_rotation=lrot)
-    PLT.plot(r['leaves'])
+    #PLT.plot(r['leaves'])
     PLT.tight_layout()
     ax.set_title(title)
     ax.set_ylabel(metric + ' distance')
     PLT.ion()
     PLT.pause(0.05)
     PLT.ioff()
+

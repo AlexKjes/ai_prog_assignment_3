@@ -24,7 +24,7 @@ class ANN:
     ACTIVATION_FN = [
         tf.nn.sigmoid,
         tf.nn.tanh,
-        tf.nn.relu6,
+        tf.nn.relu,
         tf.nn.elu,
         tf.nn.softmax,
         lambda x: tf.log(1 + tf.exp(x))
@@ -162,8 +162,8 @@ class NeuralMan:
         'evaluation_step': 100,
         'error_limit': 1,
         'map_batch_size': 0,
-        'normalize_data': False
-
+        'normalize_data': False,
+        'mb_step': False
     }
 
     def __init__(self, conf_file_path):
@@ -197,14 +197,23 @@ class NeuralMan:
         while epoch < self.properties['steps'] or self.properties['steps'] == 0 and err >= self.properties['error_limit']:
             for mb in mini_batches:
                 self._train_return_handler(self.net.batch_train(mb.x, mb.y, self._net_get()))
-
+                if self.properties['mb_step']:
+                    epoch += 1
             # End of epoch stuff
-            self.training_error.append(sum(self.mb_error)/len(self.mb_error))
-            self.mb_error = []
+            if not self.properties['mb_step']:
+                epoch += 1
+                self.training_error.append(sum(self.mb_error)/len(self.mb_error))
+                self.mb_error = []
+            else:
+                for e in self.mb_error:
+                    self.training_error.append(e)
+                self.mb_error = []
+
             err = self.training_error[-1]
-            if err >= self.properties['error_limit']:
+            if err <= self.properties['error_limit']:
                 err = self.net.evaluate_network(self.data_set.training.x, self.data_set.training.y)
-            epoch += 1
+
+
             if self.properties['visualize_error']:
                 self.error_visualizer.update_training_error(self.training_error,
                                                             np.arange(0, len(self.training_error), 1))
@@ -214,7 +223,7 @@ class NeuralMan:
                                                                        self.data_set.evaluation.y))
                 if self.properties['visualize_error']:
                     self.error_visualizer.update_evaluation_error(self.evaluation_error,
-                                                                  np.arange(0, epoch, self.properties['evaluation_step']))
+                                                                  np.arange(0, epoch, self.properties['evaluation_step'] * (len(mini_batches) if self.properties['mb_step'] else 1)))
                 print('\r' + str(round(time.time()-start_time, 2)) + "s : " + str(self.training_error[-1]), end='')
         print('\r')
         self._after_training(epoch, time.time()-start_time)
@@ -262,6 +271,7 @@ class NeuralMan:
                     elif key == 'shuffle_data' or \
                         key == 'visualize_error' or \
                         key == 'evaluate' or \
+                        key == 'mb_step' or \
                             key == 'normalize_data':
                         self.properties[key] = int(value[0]) > 0
 
@@ -349,7 +359,7 @@ class NeuralMan:
                 act = self.net.custom_run([self.net.A[a-1] for a in self.properties['map_layers']],
                                           {self.net.x: self.data_set.training.x[0:self.properties['map_batch_size']]})
                 for am, al in zip(act, self.properties['map_layers']):
-                    visual.VarVisualizer('A'+str(al), am)
+                    visual.VarVisualizer('A'+str(al), am.T)
 
 
     def _visualize_after_error(self):
@@ -378,10 +388,14 @@ class NeuralMan:
 
     def _visualize_dendrogram(self):
         if 'map_dendrograms' in self.properties.keys() and self.properties['map_batch_size'] > 0:
+            visual.VarVisualizer('Input', np.array(self.data_set.training.x))
             act = self.net.custom_run([self.net.A[a - 1] for a in self.properties['map_dendrograms']],
                                       {self.net.x: self.data_set.training.x[0:self.properties['map_batch_size']]})
-            [visual.VarVisualizer('A'+str(i+1), x.T) for i, x in enumerate(act)]
-            for am, al in zip(act, self.data_set.training.x[0:self.properties['map_batch_size']]):
-                print('YOLO!!!!!!')
-                print(al)
-                tft.dendrogram(am, tft.bits_to_str(al))
+
+            labels = []
+            for l in self.data_set.training.x[:self.properties['map_batch_size']]:
+                s = ''
+                for b in l:
+                    s += str(b)+'\n'
+                labels.append(s)
+            tft.dendrogram(act[0], labels)

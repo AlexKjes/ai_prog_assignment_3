@@ -6,20 +6,16 @@ loss_fn: 1
 output_fn: 4
 hidden_fn: 2
 learning_rate: 0.1
-weight_init_range: 0 1
+weight_init_range: 0.1 0.9
 data_distribution: .8 .1 .1
-
-
 
 mini_batch_size: 10
 
-mb_step: 0
-
-map_batch_size: 10
+#map_batch_size: 5
 #steps: 500
 error_limit: .025
-map_layers:  1
-map_dendrograms: 1
+#map_layers:  2 3
+#map_dendrograms: 1
 
 #display_weights_in_training: 1 2
 #display_biases_in_training: 1 2
@@ -30,6 +26,6 @@ save: 0
 #model_path:
 evaluate: 1
 
-shuffle_data: 1
+shuffle_data: 0
 visualize_error: 1
 evaluation_step: 1

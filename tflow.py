@@ -224,7 +224,7 @@ class NeuralMan:
                 if self.properties['visualize_error']:
                     self.error_visualizer.update_evaluation_error(self.evaluation_error,
                                                                   np.arange(0, epoch, self.properties['evaluation_step'] * (len(mini_batches) if self.properties['mb_step'] else 1)))
-                print('\r' + str(round(time.time()-start_time, 2)) + "s : " + str(self.training_error[-1]), end='')
+        print('\r' + str(round(time.time()-start_time, 2)) + "s : " + str(self.training_error[-1]), end='')
         print('\r')
         self._after_training(epoch, time.time()-start_time)
 
@@ -355,6 +355,7 @@ class NeuralMan:
 
     def _visualize_after_activations(self):
         if self.properties['map_batch_size'] > 0:
+            visual.VarVisualizer('Input', np.array(self.data_set.training.x))
             if 'map_layers' in self.properties.keys():
                 act = self.net.custom_run([self.net.A[a-1] for a in self.properties['map_layers']],
                                           {self.net.x: self.data_set.training.x[0:self.properties['map_batch_size']]})
@@ -387,8 +388,10 @@ class NeuralMan:
                 visual.VarVisualizer('B' + str(bl), bm.reshape(bm.shape[0], 1).T)
 
     def _visualize_dendrogram(self):
+        print('Print dendro')
+
         if 'map_dendrograms' in self.properties.keys() and self.properties['map_batch_size'] > 0:
-            visual.VarVisualizer('Input', np.array(self.data_set.training.x))
+
             act = self.net.custom_run([self.net.A[a - 1] for a in self.properties['map_dendrograms']],
                                       {self.net.x: self.data_set.training.x[0:self.properties['map_batch_size']]})
 
